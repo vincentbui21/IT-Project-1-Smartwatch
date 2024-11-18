@@ -8,20 +8,20 @@ import threading
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
-RATE = 12000
+RATE = 16000
 RECORD_SECONDS = 5
-INPUT_INDEX=2                  #run get_input_device_id() and paste in your computer index
-OUTPUT_INDEX=6                 #run get_output_device_id() and paste in your computer index
+INPUT_INDEX=1                  #run get_input_device_id() and paste in your computer index
+OUTPUT_INDEX=4                 #run get_output_device_id() and paste in your computer index
 
 p = pyaudio.PyAudio()
-stream_recieve = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer= CHUNK,output_device_index=4)
+stream_recieve = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer= CHUNK,output_device_index=OUTPUT_INDEX)
 stream_sending = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer= CHUNK,input_device_index=INPUT_INDEX)
 
 #--------Camera initialize---------------------
 options = {"flag": 0, "copy": True, "track": False}
 
 client = NetGear(
-	address="192.168.56.1",
+	address="10.214.4.53",
     port="5454",
     protocol="tcp",
     pattern=1,
@@ -96,7 +96,7 @@ def sound_send(client_socket:socket.socket):
 	stream_sending.close()
 	p.terminate()
 
-def sound_and_video_recieve(client_socket:socket.socket):
+def sound_and_camera_recieve(client_socket:socket.socket):
 	"""
 	This function have 2 threads running, one for sound and one for video, waiting to recieve data from the server. All the threads here could be stopped by the stop_event global variable 
 	"""
@@ -131,7 +131,7 @@ def get_output_device_id():
 
 if __name__ == "__main__":
 	client_socket = set_up_socket()
-	sound_and_video_recieve(client_socket)
+	sound_and_camera_recieve(client_socket)
 
 	sound_sending_thread = threading.Thread(target=sound_send, args=(client_socket,))
 	sound_sending_thread.start()
@@ -139,4 +139,3 @@ if __name__ == "__main__":
 	input = input('Stop? (y/n)')
 	if input == 'y':
 		stop_event.set()
-

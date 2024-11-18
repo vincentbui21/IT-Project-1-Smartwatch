@@ -9,11 +9,11 @@ import wave
 #--------Audio initialize---------------------
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 12000
+CHANNELS = 2
+RATE = 16000
 RECORD_SECONDS = 5
 INPUT_INDEX=1                    #run get_input_device_id() and paste in your external camera/headset index
-OUTPUT_INDEX=5                   #run get_output_device_id() and paste in your external camera/headset index
+OUTPUT_INDEX=4                   #run get_output_device_id() and paste in your external camera/headset index
 
 p = pyaudio.PyAudio()
 stream_sending = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer= CHUNK,input_device_index=INPUT_INDEX)
@@ -24,7 +24,7 @@ cam = cv2.VideoCapture(0)
 vid_stream = VideoGear(source=0).start()
 options = {"flag": 0, "copy": True, "track": False}
 server = NetGear(
-    address="192.168.56.1",
+    address="10.214.4.53",
     port="5454",
     protocol="tcp",
     pattern=1,
@@ -58,11 +58,12 @@ def sound_and_camera_send(client_socket:socket.socket, stop_event:threading.Even
             if vid_frame is None:
                 break
 
-            server.send(vid_frame)
-            client_socket.send(sound_frame)
+            server.send(vid_frame) #sending camera frame
+            client_socket.send(sound_frame) # sending sound frame
 
             if stop_event.is_set():
                 break
+
         except KeyboardInterrupt:
             vid_stream.stop()
             server.close()
@@ -122,6 +123,7 @@ if __name__ == "__main__":
     print('Socket connected!')
 
     sound_and_camera_send(conn, stop_event)
-    sound_sending_thread = threading.Thread(target=sound_recieve, args=(conn,), daemon=True)
-    sound_sending_thread.start()
+    sound_receiving_thread = threading.Thread(target=sound_recieve, args=(conn,), daemon=True)
+    sound_receiving_thread.start()
+
 
