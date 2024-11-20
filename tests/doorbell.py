@@ -99,13 +99,13 @@ def send_a_from_input(client_socket: socket.socket):
     """
     try:
         while not stop_event.is_set():
-            user_input = input("Click 'enter' to ring the bell: ").strip()
+            user_input = input("Press 'enter' to ring the bell. Write 'exit' to end: ").strip()
             if user_input == '':
                 print("Sending the message to the smartwatch...")
-                client_socket.send(b'ring')  # Enviar la letra 'a' como bytes
-            elif user_input.lower() == 'salir':
+                client_socket.send(b'ring')  # Send the word 'ring' as bytes
+            elif user_input.lower() == 'exit':
                 print("Exiting data sending.")
-                stop_event.set()  # Detener el programa
+                stop_event.set()  # Stop the program
                 break
     except Exception as e:
         print(f"Error in send_a_from_input: {e}")
