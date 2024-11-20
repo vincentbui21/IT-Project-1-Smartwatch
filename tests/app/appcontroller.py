@@ -99,7 +99,7 @@ class AppController:
         self.sound_sending_thread = threading.Thread(target=self.sound_send)
         self.sound_sending_thread.start()
 
-        self.listen_thread = threading.Thread(target=self.listen_for_a, daemon=True)
+        self.listen_thread = threading.Thread(target=self.listen_for_ring, daemon=True)
         self.listen_thread.start()
 
     def camera_receive(self):
@@ -160,26 +160,28 @@ class AppController:
         self.stream_sending.close()
         self.p.terminate()
 
-    def listen_for_a(self):
+    def listen_for_ring(self):
         """
-        Escucha en el socket para detectar cuando se recibe la letra 'a'.
-        Si la detecta, pone la variable call_in_progress en True.
+        Hear the socket to listen when it hears the word 'ring'.
+        If it detects it, change the page to the incoming call, in case it's in the clock.
         """
         try:
             while True:
                 data = self.client_socket.recv(1024)  # Leer del socket
 
                 # Verificar si 'a' está en los datos recibidos
-                if data.strip() == b'a':
-                    print("Letra 'a' recibida. Actualizando estado.")
-                    if self.show_doorbell == False:
-                        self.show_doorbell = True
+                if data.strip() == b'ring':
+                    if self.call_in_progress == False:
+                        print("Ring received: Making the call")
+                        self.call_in_progress = True
                         self.show_incoming_call_screen()
+                    else:
+                        print("Ring received: A call is already in progress")
 
                 if stop_event.is_set():
                     break
         except Exception as e:
-            print(f"Error en listen_for_a: {e}")
+            print(f"Error in listen_for_ring: {e}")
         finally:
             self.client_socket.close()
 

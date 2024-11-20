@@ -19,7 +19,6 @@ class NiftyClockScreen:
         self.root = root
         self.ticker = None
         self.minute = -1
-        self.root.bind("<Key-space>", self.on_key_pressed)
         self.app_init()
 
     def drawTime(self):
@@ -48,10 +47,6 @@ class NiftyClockScreen:
         if self.ticker_thread:
             sched.clearInterval(self.ticker_flag, self.ticker_thread)
         self.g.fill(BLACK)
-
-    def on_key_pressed(self, event):
-        # Change the page to the Call screen
-        self.controller.show_incoming_call_screen()
 
 if __name__ == "__main__":
     root = tk.Tk()

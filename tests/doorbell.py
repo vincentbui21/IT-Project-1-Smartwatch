@@ -28,7 +28,7 @@ server = NetGear(
     port="5454",
     protocol="tcp",
     pattern=1,
-    logging=True,
+    logging=False,
     **options
 )
 #--------Functions -----------------------------
@@ -99,16 +99,16 @@ def send_a_from_input(client_socket: socket.socket):
     """
     try:
         while not stop_event.is_set():
-            user_input = input("Escribe algo y presiona Enter (escribe 'a' para enviar): ").strip()
-            if user_input == 'a':
-                print("Enviando 'a' al cliente...")
-                client_socket.send(b'a')  # Enviar la letra 'a' como bytes
+            user_input = input("Click 'enter' to ring the bell: ").strip()
+            if user_input == '':
+                print("Sending the message to the smartwatch...")
+                client_socket.send(b'ring')  # Enviar la letra 'a' como bytes
             elif user_input.lower() == 'salir':
-                print("Saliendo del envío de datos.")
+                print("Exiting data sending.")
                 stop_event.set()  # Detener el programa
                 break
     except Exception as e:
-        print(f"Error en send_a_from_input: {e}")
+        print(f"Error in send_a_from_input: {e}")
     finally:
         client_socket.close()
 
@@ -151,6 +151,3 @@ if __name__ == "__main__":
     sound_and_camera_send(conn, stop_event)
     sound_receiving_thread = threading.Thread(target=sound_receive, args=(conn,), daemon=True)
     sound_receiving_thread.start()
-
-
-
