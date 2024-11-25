@@ -166,20 +166,21 @@ class AppController:
         If it detects it, change the page to the incoming call, in case it's in the clock.
         """
         try:
+            buffer = b''
             while True:
-                data = self.client_socket.recv(1024)  # Leer del socket
-
-                # Verificar si 'a' está en los datos recibidos
-                if data.strip() == b'ring':
+                data = self.client_socket.recv(1024)
+                buffer += data  # Save all the data
+                if b'ring' in buffer:
+                    buffer = b''  # Reset the buffer after reading
                     if self.call_in_progress == False:
                         print("Ring received: Making the call")
                         self.call_in_progress = True
                         self.show_incoming_call_screen()
                     else:
                         print("Ring received: A call is already in progress")
-
                 if stop_event.is_set():
                     break
+                
         except Exception as e:
             print(f"Error in listen_for_ring: {e}")
         finally:

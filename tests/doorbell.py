@@ -92,17 +92,17 @@ def sound_receive(client_socket:socket.socket):
     stream_receive.close()
     p.terminate()  
 
-def send_a_from_input(client_socket: socket.socket):
+def send_ring_from_input(client_socket: socket.socket):
     """
-    Lee continuamente la entrada del teclado y envía 'a' al socket si se introduce.
-    Se detiene cuando el evento stop_event está activado.
+    Read the keyboard and send 'ring' to the socket if enter is clicked.
+    Stop when stop_event is set.
     """
     try:
         while not stop_event.is_set():
             user_input = input("Press 'enter' to ring the bell. Write 'exit' to end: ").strip()
             if user_input == '':
                 print("Sending the message to the smartwatch...")
-                client_socket.send(b'ring')  # Send the word 'ring' as bytes
+                client_socket.send(b'ring\n')  # Send the word 'ring' as bytes
             elif user_input.lower() == 'exit':
                 print("Exiting data sending.")
                 stop_event.set()  # Stop the program
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     conn, add = server_socket.accept()
     print('Socket connected!')
 
-    send_a_thread = threading.Thread(target=send_a_from_input, args=(conn,), daemon=True)
+    send_a_thread = threading.Thread(target=send_ring_from_input, args=(conn,), daemon=True)
     send_a_thread.start()
 
     sound_and_camera_send(conn, stop_event)
