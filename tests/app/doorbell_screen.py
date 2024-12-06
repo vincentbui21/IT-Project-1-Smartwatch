@@ -126,6 +126,9 @@ class DoorbellScreen:
         if HANG_UP_X <= event.x <= HANG_UP_X + BUTTON_WIDTH and BUTTON_Y <= event.y <= BUTTON_Y + BUTTON_HEIGHT:
             self.controller.show_nifty_clock_screen()
 
+        if OPEN_X <= event.x <= OPEN_X + BUTTON_WIDTH and BUTTON_Y <= event.y <= BUTTON_Y + BUTTON_HEIGHT:
+            self.controller.open_door()
+
     def on_key_pressed(self, event):
         # Change the page to the Call screen
         self.controller.show_nifty_clock_screen()
