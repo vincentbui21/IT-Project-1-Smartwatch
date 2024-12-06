@@ -1,75 +1,79 @@
 import cv2
 import threading
 import socket
+from vidgear.gears import VideoGear
+from vidgear.gears import NetGear
 import pyaudio
-import pickle
-import struct
-import imutils
-import time
+import wave
 
 #--------Audio initialize---------------------
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
+RECORD_SECONDS = 5
 INPUT_INDEX=1                    #run get_input_device_id() and paste in your external camera/headset index
-OUTPUT_INDEX=3                   #run get_output_device_id() and paste in your external camera/headset index
+OUTPUT_INDEX=4                   #run get_output_device_id() and paste in your external camera/headset index
 
 p = pyaudio.PyAudio()
 stream_sending = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer= CHUNK,input_device_index=INPUT_INDEX)
-stream_recieve = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer= CHUNK,output_device_index=OUTPUT_INDEX)
+stream_receive = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, output=True, frames_per_buffer= CHUNK,output_device_index=OUTPUT_INDEX)
 
 #--------Camera initialize---------------------
-
+cam = cv2.VideoCapture(0)
+vid_stream = VideoGear(source=1).start()
+options = {"flag": 0, "copy": True, "track": False}
+server = NetGear(
+    address="127.0.0.1",
+    port="5454",
+    protocol="tcp",
+    pattern=1,
+    logging=False,
+    **options
+)
 #--------Functions -----------------------------
 
-def set_up_socket(host_ip = socket.gethostbyname(socket.gethostname()), ports = [8080,8081,8082,8083]):
+def set_up_socket(host_ip = socket.gethostbyname(socket.gethostname()), port = 8080):
     '''
 	This function set up the socket, connected to host and port which are pasted in as parameter. By default, host would be local host and port would be 8080
 	'''
-    conns = []
+    server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+    print('HOST IP:',host_ip)
+    socket_address = (host_ip,port)
+    server_socket.bind(socket_address)
+    server_socket.listen(5)
+    print("LISTENING AT:",socket_address)
+    return server_socket
 
-    print("LISTENING AT:" + host_ip)
-    for port in ports:
-        client_socket= socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-
-        client_socket.bind((host_ip,port))
-        client_socket.listen(1)
-        conn , addr = client_socket.accept()
-        print('...')
-        conns.append(conn)
-
-    return conns
-
-def video_send(client_socket_video:socket.socket):
-    vid = cv2.VideoCapture(0)
-    
-    while True:
-        img, frame = vid.read()
-        a = pickle.dumps(frame)
-        msg = struct.pack('Q', len(a))+a
-        client_socket_video.sendall(msg)
-
-        if stop_event.is_set() or cv2.waitKey(1) == ord('q'):
-            break
-
-def sound_send(client_socket_sound:socket.socket):
+def sound_and_camera_send(client_socket:socket.socket, stop_event:threading.Event):
+    '''
+    This function send a frame from camera and a frame from microphone through the open socket. The microphone could be chosen by the INPUT_INDEX global variable in the Sound initializing part.
+    This function can be stopped by the global variable stop_event
+    '''
+    print('Recording...')
     while True:
         try:
+            vid_frame = vid_stream.read()
             sound_frame = stream_sending.read(CHUNK)
-            client_socket_sound.send(sound_frame) # sending sound frame
+            if vid_frame is None:
+                break
+
+            server.send(vid_frame) #sending camera frame
+            client_socket.send(sound_frame) # sending sound frame
 
             if stop_event.is_set():
                 break
 
         except KeyboardInterrupt:
+            vid_stream.stop()
+            server.close()
             stream_sending.close()
             p.terminate()
             break
 
-def sound_recieve(client_socket:socket.socket):
+def sound_receive(client_socket:socket.socket):
     '''
-    This function recieve a frame of sound from the smartwatch and play it through the selected speaker matching the OUTPUT_INDEX ID in the Sound initializing part
+    This function receive a frame of sound from the smartwatch and play it through the selected speaker matching the OUTPUT_INDEX ID in the Sound initializing part
     '''
     while True:
         try:
@@ -77,14 +81,15 @@ def sound_recieve(client_socket:socket.socket):
 
             if frame == b'':
                 break
-            stream_recieve.write(frame)
+            print(frame)
+            stream_receive.write(frame)
             if stop_event.is_set():
                 break
         except Exception as e:
             print(e)
             break
 
-    stream_recieve.close()
+    stream_receive.close()
     p.terminate()  
 
 def send_ring_from_input(client_socket: socket.socket):
@@ -107,17 +112,6 @@ def send_ring_from_input(client_socket: socket.socket):
     finally:
         client_socket.close()
 
-def open_door(client_socket: socket.socket):
-    """
-    This function listen to command from the smartwatch whether to open the door or not. It utilize the send_ring_from_input socket
-    """
-    while True:
-        data = client_socket.recv(1024)
-        if data.strip() == b'open':
-            print('\nDoor opened, you can enter the house!')
-
-        if stop_event.is_set():
-            break
 
 def get_input_device_id():
     """
@@ -144,29 +138,16 @@ def get_output_device_id():
     p.terminate()
 
 if __name__ == "__main__":
+    # get_input_device_id()
+    # get_output_device_id()
     stop_event = threading.Event()
-    conn = set_up_socket(host_ip="192.168.1.147")
-    conn_sound_send = conn[0] #port 8080
-    conn_sound_recv = conn[1] #port 8081
-    conn_video = conn[2] #port 8082
-    conn_ring = conn[3] #port 8083
-
+    server_socket = set_up_socket()
+    conn, add = server_socket.accept()
     print('Socket connected!')
 
-    sound_sending_thread = threading.Thread(target=sound_send, args=(conn_sound_send,), daemon=True)
-    sound_receiving_thread = threading.Thread(target=sound_recieve, args=(conn_sound_recv,), daemon=True)
-    video_sending_thread = threading.Thread(target=video_send, args=(conn_video,), daemon=True)
-    send_a_thread = threading.Thread(target=send_ring_from_input, args=(conn_ring,), daemon=True)
-    open_door_thread = threading.Thread(target=open_door, args=(conn_ring,), daemon= True)
-    
+    send_a_thread = threading.Thread(target=send_ring_from_input, args=(conn,), daemon=True)
     send_a_thread.start()
+
+    sound_and_camera_send(conn, stop_event)
+    sound_receiving_thread = threading.Thread(target=sound_receive, args=(conn,), daemon=True)
     sound_receiving_thread.start()
-    sound_sending_thread.start()
-    video_sending_thread.start()
-    open_door_thread.start()
-
-    while True:
-        if stop_event.is_set():
-            break
-
-
