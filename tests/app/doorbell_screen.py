@@ -24,9 +24,6 @@ HANG_UP_X = 30
 OPEN_X = 135
 RADIUS = 8
 
-HOST = '127.0.0.1' #'192.168.1.117'
-PORT = 65432 #8080
-
 class DoorbellScreen:
     def __init__(self, g, root, controller):
         self.g = g
@@ -93,34 +90,6 @@ class DoorbellScreen:
         self.g.fill_rounded_rect(OPEN_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, RADIUS, LIGHTGREEN)  # Green button for "Open"
         self.g.text("Open", 175, 212, WHITE)
 
-    def start_receiver(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((HOST, PORT))
-            print("Connected to server.")
-            data = b""
-            payload_size = struct.calcsize("Q")
-
-            while not self.ticker_flag.is_set():
-                while len(data) < payload_size:
-                    packet = s.recv(4096)
-                    if not packet:
-                        print("Connection closed by server.")
-                        return
-                    data += packet
-                
-                packed_msg_size = data[:payload_size]
-                data = data[payload_size:]
-                msg_size = struct.unpack("Q", packed_msg_size)[0]
-
-                while len(data) < msg_size:
-                    data += s.recv(4096)
-
-                frame_data = data[:msg_size]
-                data = data[msg_size:]
-
-                frame = pickle.loads(frame_data)
-                self.draw_frame(frame)
-
     def on_click(self, event):
         # Check if click is within the Decline or Accept button area
         if HANG_UP_X <= event.x <= HANG_UP_X + BUTTON_WIDTH and BUTTON_Y <= event.y <= BUTTON_Y + BUTTON_HEIGHT:
@@ -138,7 +107,6 @@ class DoorbellScreen:
         self.display_interface()
         self.display_time_and_date()
         self.ticker_flag, self.ticker_thread = sched.setInterval(100, self.display_time_and_date)
-        # self.start_receiver()
 
     def app_end(self):
         if self.ticker_thread:
